@@ -4,72 +4,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Lejátszó</title>
+    <title>Tanuló Lejátszó</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #ffffff;
-            color: #000000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 400px;
-        }
-
-        audio {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        .controls {
-            display: grid;
-            gap: 10px;
-        }
-
-        button {
-            padding: 15px;
-            border: 1px solid #ccc;
-            background-color: #f9f9f9;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        button.active {
-            background-color: #000;
-            color: #fff;
-            border-color: #000;
-        }
+        body { font-family: Arial, sans-serif; background: #fff; padding: 20px; max-width: 400px; margin: auto; }
+        audio { width: 100%; margin-bottom: 20px; }
+        .controls { display: grid; gap: 10px; margin-bottom: 20px; }
+        button { padding: 10px; cursor: pointer; border: 1px solid #ccc; background: #f9f9f9; }
+        button.active { background: #000; color: #fff; }
+        #lyrics-box { border-top: 2px solid #eee; padding-top: 20px; min-height: 100px; font-size: 18px; line-height: 1.5; color: #333; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Hipochondria</h2>
-        <audio id="zene" controls>
-            <source src="Hipochondria.mp3" type="audio/mpeg">
-        </audio>
+    <h2>Hipochondria</h2>
+    <audio id="zene" controls>
+        <source src="Hipochondria.mp3" type="audio/mpeg">
+    </audio>
 
-        <div class="controls">
-            <button onclick="loopRange(this, 29, 43)">0:29 - 0:43</button>
-            <button onclick="loopRange(this, 43, 57)">0:43 - 0:57</button>
-            <button onclick="clearLoop(this)">Ismétlés leállítása</button>
-        </div>
+    <div class="controls">
+        <button onclick="setLoop(this, 29, 43, 'I check my body every hour.
+I feel I lose my physical power.
+I find a new problem every day,
+The happy thoughts all go away.
+')">1. Versszak</button>
+        <button onclick="setLoop(this, 43, 59, 'I am terribly unwell tonight,
+My face is completely white.
+I suffer from a secret thing,
+The church bells start to ring.
+')">2. Versszak</button>
+        <button onclick="clearLoop(this)">Minden szöveg megjelenítése</button>
     </div>
+
+    <div id="lyrics-box">Válogass egy versszakot a tanuláshoz!</div>
 
     <script>
         const audio = document.getElementById("zene");
+        const lyricsBox = document.getElementById("lyrics-box");
         let start, end;
 
-        function loopRange(btn, s, e) {
+        function setLoop(btn, s, e, text) {
             start = s; end = e;
+            lyricsBox.innerText = text;
             audio.currentTime = start;
             audio.play();
             document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
@@ -82,6 +57,7 @@
 
         function clearLoop(btn) {
             end = null;
+            lyricsBox.innerText = "Itt a teljes dalszöveg jelenhet meg.";
             document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
@@ -90,4 +66,3 @@
 </html>
 
 ```
-
