@@ -3,15 +3,12 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tanuló Lejátszó</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #fff; padding: 20px; max-width: 400px; margin: auto; }
-        audio { width: 100%; margin-bottom: 20px; }
+        body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; }
         .controls { display: grid; gap: 10px; margin-bottom: 20px; }
-        button { padding: 10px; cursor: pointer; border: 1px solid #ccc; background: #f9f9f9; }
-        button.active { background: #000; color: #fff; }
-        #lyrics-box { border-top: 2px solid #eee; padding-top: 20px; min-height: 100px; font-size: 18px; line-height: 1.5; color: #333; }
+        button { padding: 10px; cursor: pointer; }
+        #lyrics-box { border-top: 2px solid #ccc; padding-top: 20px; font-size: 18px; }
     </style>
 </head>
 <body>
@@ -22,20 +19,19 @@
     </audio>
 
     <div class="controls">
-        <button onclick="setLoop(this, 29, 43, 'I check my body every hour.
+        <!-- Itt használd a ` jeleket az idézőjelek helyett -->
+        <button onclick="setLoop(this, 29, 43, `I check my body every hour.
 I feel I lose my physical power.
 I find a new problem every day,
-The happy thoughts all go away.
-')">1. Versszak</button>
-        <button onclick="setLoop(this, 43, 59, 'I am terribly unwell tonight,
+The happy thoughts all go away.`)">1. Versszak</button>
+        <button onclick="setLoop(this, 43, 57, `I am terribly unwell tonight,
 My face is completely white.
 I suffer from a secret thing,
-The church bells start to ring.
-')">2. Versszak</button>
-        <button onclick="clearLoop(this)">Minden szöveg megjelenítése</button>
+The church bells start to ring.`)">2. Versszak</button>
+        <button onclick="clearLoop(this)">Szöveg alaphelyzetbe</button>
     </div>
 
-    <div id="lyrics-box">Válogass egy versszakot a tanuláshoz!</div>
+    <div id="lyrics-box">Válassz egy részt a kezdéshez!</div>
 
     <script>
         const audio = document.getElementById("zene");
@@ -47,8 +43,6 @@ The church bells start to ring.
             lyricsBox.innerText = text;
             audio.currentTime = start;
             audio.play();
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
         }
 
         audio.addEventListener('timeupdate', () => {
@@ -57,32 +51,7 @@ The church bells start to ring.
 
         function clearLoop(btn) {
             end = null;
-            lyricsBox.innerText = "Intro
-I check my body every hour.
-I feel I lose my physical power.
-I find a new problem every day,
-The happy thoughts all go away.
-Refrain
-I am terribly unwell tonight,
-My face is completely white.
-I suffer from a secret thing,
-The church bells start to ring.
-Verse 1
-I think I have a heart attack.
-I need to lie down on my back.
-My lifestyle is very unhealthy.
-Only the doctors are getting wealthy.
-Verse 2
-This scary cancer is inside.
-The doctor's office is very wide.
-I always catch a dangerous flu.
-I do not know what to do.
-Refrain
-I am terribly unwell tonight,
-My face is completely white.";
-            documen
-                t.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            lyricsBox.innerText = "Válassz egy részt a kezdéshez!";
         }
     </script>
 </body>
