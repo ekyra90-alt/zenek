@@ -1,38 +1,93 @@
+```html
 <!DOCTYPE html>
-<html>
-<body>
-    <h1>Hipochondria - Tanulás</h1>
-    
-    <audio id="zene" controls>
-        <source src="Hipochondria.mp3" type="audio/mpeg">
-    </audio>
-
-    <br><br>
-    <!-- Gombok a versszakokhoz -->
-    <button onclick="loopRange(29, 43)">1. versszak (29-43 mp)</button>
-    <button onclick="loopRange(43, 57)">2. versszak (43-57 mp)</button>
-    <button onclick="clearLoop()">Ismétlés kikapcsolása</button>
-
-    <script>
-        var audio = document.getElementById("zene");
-        var start, end;
-
-        function loopRange(s, e) {
-            start = s;
-            end = e;
-            audio.currentTime = start;
-            audio.play();
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Lejátszó</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+            color: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
         }
 
-        audio.addEventListener('timeupdate', function() {
-            if (end && audio.currentTime >= end) {
-                audio.currentTime = start;
-            }
+        .container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: grid;
+            gap: 10px;
+        }
+
+        button {
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button.active {
+            background-color: #000;
+            color: #fff;
+            border-color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Hipochondria</h2>
+        <audio id="zene" controls>
+            <source src="Hipochondria.mp3" type="audio/mpeg">
+        </audio>
+
+        <div class="controls">
+            <button onclick="loopRange(this, 29, 43)">0:29 - 0:43</button>
+            <button onclick="loopRange(this, 43, 57)">0:43 - 0:57</button>
+            <button onclick="clearLoop(this)">Ismétlés leállítása</button>
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById("zene");
+        let start, end;
+
+        function loopRange(btn, s, e) {
+            start = s; end = e;
+            audio.currentTime = start;
+            audio.play();
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        audio.addEventListener('timeupdate', () => {
+            if (end && audio.currentTime >= end) audio.currentTime = start;
         });
 
-        function clearLoop() {
+        function clearLoop(btn) {
             end = null;
+            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
         }
     </script>
 </body>
 </html>
+
+```
+
