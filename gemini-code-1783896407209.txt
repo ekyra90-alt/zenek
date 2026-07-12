@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angol Tanulókártyák - TTS Program</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { brand: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' } } } }
+    }
+  </script>
+  <style>
+    @keyframes pulse-ring { 0% { transform: scale(0.95); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.5; } 100% { transform: scale(0.95); opacity: 1; } }
+    .pulse-active { animation: pulse-ring 2s infinite ease-in-out; }
+    @keyframes pulse-mic { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } }
+    .pulse-mic-active { animation: pulse-mic 1.5s infinite ease-in-out; }
+  </style>
+  <!-- 🌐 BEOLVASSUK A KÖZÖS ADATOT -->
+  <script src="adat.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-300">
+
+  <header class="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-6 sticky top-0 z-10 shadow-sm">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-lg font-bold tracking-wide text-slate-800 dark:text-white">Angol Tanulókártyák (Felolvasó)</span>
+        <a href="zene_lejatszo.html" class="text-xs bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 px-3 py-1.5 rounded-xl font-bold hover:bg-brand-200 transition">➔ Váltás Zene Módra</a>
+      </div>
+      <button id="themeToggle" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">Váltás</button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center items-center gap-6">
+    <div class="w-full max-w-2xl flex justify-between items-center text-sm font-medium text-slate-400">
+      <span id="cardProgress">1 / 12</span>
+      <label class="flex items-center gap-2 cursor-pointer select-none">
+        <input type="checkbox" id="autoPlayToggle" checked> <span>Automatikus lejátszás</span>
+      </label>
+    </div>
+
+    <div id="flashcard" class="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/60 p-8 md:p-12 flex flex-col justify-between min-h-[280px] transition-all duration-300 shadow-xl cursor-pointer">
+      <div class="flex-1 flex flex-col justify-center space-y-6 my-auto text-center">
+        <p id="englishText" class="text-2xl md:text-3xl font-medium text-slate-950 dark:text-white leading-relaxed"></p>
+        <div class="w-full border-t border-slate-100 dark:border-slate-700 my-2"></div>
+        <p id="hungarianText" class="text-xl md:text-2xl font-normal text-slate-600 dark:text-slate-300"></p>
+      </div>
+    </div>
+
+    <!-- Vezetett tanulás panel -->
+    <div id="guidedPanel" class="w-full max-w-2xl bg-brand-50 dark:bg-brand-950/20 border-2 border-brand-200 rounded-2xl p-6 hidden flex-col items-center gap-5">
+      <div class="flex items-center justify-between w-full border-b pb-3">
+        <span class="text-sm font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">Vezetett Mélytanulás</span>
+        <div class="flex items-center gap-2">
+          <button id="pauseGuidedBtn" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-brand-200 dark:bg-brand-900 text-brand-700">Szünet</button>
+          <button id="exitGuidedBtn" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800">Kilépés</button>
+        </div>
+      </div>
+      <div class="w-full grid grid-cols-2 gap-4 my-1">
+        <div id="phase1Card" class="bg-white dark:bg-slate-800 p-4 rounded-xl text-center"><span class="text-2xl">🎧</span><p class="text-sm font-bold">1. Hallgasd meg</p><div id="phase1Progress" class="text-xs text-slate-400">0 / 5</div></div>
+        <div id="phase2Card" class="bg-white dark:bg-slate-800 p-4 rounded-xl text-center"><span id="phase2Icon" class="text-2xl block">🗣️</span><p class="text-sm font-bold">2. Mondd utánam</p><div id="phase2Progress" class="text-xs text-slate-400">0 / 5</div></div>
+      </div>
+      <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden hidden" id="countdownBarContainer"><div id="countdownBar" class="bg-brand-500 h-full w-full"></div></div>
+      <div class="text-center w-full">
+        <p id="guidedStatusText" class="text-base font-semibold text-brand-700 dark:text-brand-400">Betöltés...</p>
+        <button id="nextGuidedCardBtn" class="mt-4 px-6 py-3 rounded-xl bg-brand-600 text-white font-bold text-sm hidden mx-auto">Következő kártya ➔</button>
+      </div>
+    </div>
+
+    <!-- Normál vezérlők -->
+    <div id="standardControls" class="w-full max-w-2xl bg-white dark:bg-slate-800 p-6 flex flex-col md:flex-row items-center justify-between gap-6 rounded-2xl shadow-sm">
+      <select id="speedSelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm font-medium">
+        <option value="0.6">0.6x</option> <option value="0.8" selected>0.8x</option> <option value="1.0">1.0x</option>
+      </select>
+      <div class="flex flex-wrap items-center gap-3">
+        <button id="startGuidedBtn" class="px-5 py-3 rounded-xl bg-brand-600 text-white font-bold text-sm shadow-md">Irányított Tanulás</button>
+        <button id="loopBtn" class="px-4 py-2.5 rounded-xl border bg-white dark:bg-slate-800 text-sm font-semibold whitespace-nowrap flex items-center gap-2"><span>Ismétlés: Ki</span><span id="loopDot" class="w-2 h-2 rounded-full bg-slate-300"></span></button>
+        <button id="playBtn" class="relative p-4 rounded-full bg-brand-600 text-white shadow-lg"><span id="playPulseRing" class="absolute inset-0 rounded-full bg-brand-500/40 hidden"></span>▶️</button>
+      </div>
+    </div>
+
+    <div class="w-full max-w-2xl flex items-center justify-between gap-4">
+      <button id="prevBtn" class="flex-1 py-3 rounded-2xl bg-white dark:bg-slate-800 border font-semibold shadow-sm">Előző</button>
+      <button id="nextBtn" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white font-semibold shadow-md">Következő</button>
+    </div>
+    <div id="quickNavContainer" class="w-full max-w-2xl"><div class="flex flex-wrap gap-2 justify-center" id="quickNavGrid"></div></div>
+  </main>
+
+  <script>
+    // Dinamikusan átemeljük az adatokat az adat.js-ből!
+    const cards = cardsData;
+
+    let currentIndex = 0; let isLooping = false; let isSpeaking = false;
+    let synth = window.speechSynthesis; let currentUtterance = null; let loopTimeout = null;
+    let guidedActive = false; let guidedPaused = false; let guidedStep = 1; let guidedSubStep = 'speaking';
+    let guidedCount = 0; const maxGuidedCount = 5; let countdownInterval = null; let remainingTime = 0; let currentRepeatDuration = 0;
+
+    const englishText = document.getElementById('englishText'); const hungarianText = document.getElementById('hungarianText');
+    const cardProgress = document.getElementById('cardProgress'); const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn'); const playBtn = document.getElementById('playBtn');
+    const playPulseRing = document.getElementById('playPulseRing'); const loopBtn = document.getElementById('loopBtn');
+    const loopDot = document.getElementById('loopDot'); const speedSelect = document.getElementById('speedSelect');
+    const autoPlayToggle = document.getElementById('autoPlayToggle'); const quickNavGrid = document.getElementById('quickNavGrid');
+    const flashcard = document.getElementById('flashcard'); const guidedPanel = document.getElementById('guidedPanel');
+    const standardControls = document.getElementById('standardControls'); const phase1Card = document.getElementById('phase1Card');
+    const phase2Card = document.getElementById('phase2Card'); const phase2Icon = document.getElementById('phase2Icon');
+    const phase1Progress = document.getElementById('phase1Progress'); const phase2Progress = document.getElementById('phase2Progress');
+    const guidedStatusText = document.getElementById('guidedStatusText'); const countdownBarContainer = document.getElementById('countdownBarContainer');
+    const countdownBar = document.getElementById('countdownBar'); const startGuidedBtn = document.getElementById('startGuidedBtn');
+    const exitGuidedBtn = document.getElementById('exitGuidedBtn'); const pauseGuidedBtn = document.getElementById('pauseGuidedBtn');
+    const nextGuidedCardBtn = document.getElementById('nextGuidedCardBtn');
+
+    function formatTextWithBold(text) {
+      return text.replace(/\*\*(.*?)\*\*/g, (match, p1) => {
+        return `<span class="text-brand-600 dark:text-brand-400 font-black">${p1}</span>`;
+      });
+    }
+    function cleanTextForSpeech(text) { return text.replace(/\*\*/g, ''); }
+
+    function updateCard() {
+      const card = cards[currentIndex];
+      englishText.innerHTML = formatTextWithBold(card.english);
+      hungarianText.textContent = card.hungarian;
+      cardProgress.textContent = `${currentIndex + 1} / ${cards.length}`;
+      prevBtn.disabled = currentIndex === 0;
+      nextBtn.disabled = currentIndex === cards.length - 1;
+      updateQuickNavHighlight(); stopSpeech();
+      if (guidedActive) { startGuidedSequence(); } else if (autoPlayToggle.checked) { setTimeout(() => { speakCurrent(); }, 300); }
+    }
+
+    function setupQuickNav() {
+      quickNavGrid.innerHTML = '';
+      cards.forEach((card, idx) => {
+        const btn = document.createElement('button'); btn.textContent = card.keyword;
+        btn.className = `px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${idx === currentIndex ? 'bg-brand-600 text-white' : 'bg-white dark:bg-slate-800'}`;
+        btn.addEventListener('click', () => { currentIndex = idx; updateCard(); });
+        quickNavGrid.appendChild(btn);
+      });
+    }
+
+    function updateQuickNavHighlight() {
+      Array.from(quickNavGrid.children).forEach((btn, idx) => {
+        if (idx === currentIndex) { btn.className = 'px-2.5 py-1.5 rounded-xl text-xs font-bold bg-brand-600 text-white scale-105'; }
+        else { btn.className = 'px-2.5 py-1.5 rounded-xl text-xs font-semibold border bg-white dark:bg-slate-800 text-slate-500'; }
+      });
+    }
+
+    function speakCurrent() {
+      if (!synth) return; stopSpeech();
+      const textToSpeak = cleanTextForSpeech(cards[currentIndex].english);
+      currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+      currentUtterance.lang = 'en-US'; currentUtterance.rate = parseFloat(speedSelect.value) || 1.0;
+      currentUtterance.onstart = () => { isSpeaking = true; playPulseRing.classList.remove('hidden'); };
+      currentUtterance.onend = () => { isSpeaking = false; playPulseRing.classList.add('hidden'); if (isLooping) { loopTimeout = setTimeout(() => { speakCurrent(); }, 1200); } };
+      synth.speak(currentUtterance);
+    }
+
+    function stopSpeech() { if (synth) synth.cancel(); if (loopTimeout) clearTimeout(loopTimeout); if (countdownInterval) clearInterval(countdownInterval); isSpeaking = false; playPulseRing.classList.add('hidden'); }
+    function startGuidedMode() { guidedActive = true; guidedPaused = false; standardControls.classList.add('hidden'); quickNavContainer.classList.add('hidden'); guidedPanel.classList.remove('hidden'); startGuidedSequence(); }
+    function startGuidedSequence() { stopSpeech(); guidedStep = 1; guidedSubStep = 'speaking'; guidedCount = 0; guidedPaused = false; phase1Card.className = "p-4 rounded-xl text-center border bg-brand-100 dark:bg-brand-900"; phase2Card.className = "p-4 rounded-xl text-center border opacity-50"; runGuidedStep(); }
+
+    function runGuidedStep() {
+      if (!guidedActive || guidedPaused) return;
+      const speechText = cleanTextForSpeech(cards[currentIndex].english);
+      if (guidedStep === 1) {
+        guidedSubStep = 'speaking'; guidedStatusText.textContent = "🎧 Csak hallgasd a mondatot...";
+        currentUtterance = new SpeechSynthesisUtterance(speechText); currentUtterance.lang = 'en-US'; currentUtterance.rate = parseFloat(speedSelect.value);
+        currentUtterance.onstart = () => { phase1Progress.textContent = `${guidedCount + 1} / 5`; };
+        currentUtterance.onend = () => { guidedCount++; if (guidedCount < 5) { loopTimeout = setTimeout(() => { runGuidedStep(); }, 1000); } else { playTransitionChime(); guidedStep = 2; guidedCount = 0; phase1Card.className = "p-4 rounded-xl text-center opacity-50"; phase2Card.className = "p-4 rounded-xl text-center border bg-brand-100 dark:bg-brand-900"; runGuidedStep(); } };
+        synth.speak(currentUtterance);
+      } else if (guidedStep === 2) {
+        guidedSubStep = 'speaking'; guidedStatusText.textContent = "🗣️ Figyelj, majd ismételd el!";
+        currentUtterance = new SpeechSynthesisUtterance(speechText); currentUtterance.lang = 'en-US'; currentUtterance.rate = parseFloat(speedSelect.value);
+        currentUtterance.onstart = () => { phase2Progress.textContent = `${guidedCount + 1} / 5`; };
+        currentUtterance.onend = () => { guidedSubStep = 'waiting'; guidedStatusText.textContent = "🗣️ MOST TE JÖSSZ! Mondd hangosan utánam!"; countdownBarContainer.classList.remove('hidden'); const wordCount = speechText.split(' ').length; currentRepeatDuration = Math.max(3000, (wordCount * 650) + 1800); remainingTime = currentRepeatDuration; startCountdown(); };
+        synth.speak(currentUtterance);
+      }
+    }
+
+    function startCountdown() {
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        if (guidedPaused) return; remainingTime -= 100;
+        countdownBar.style.width = `${(remainingTime / currentRepeatDuration) * 100}%`;
+        if (remainingTime <= 0) { clearInterval(countdownInterval); countdownBarContainer.classList.add('hidden'); guidedCount++; if (guidedCount < 5) { runGuidedStep(); } else { guidedStatusText.textContent = "🏆 Szuper! Kész!"; nextGuidedCardBtn.classList.remove('hidden'); } }
+      }, 100);
+    }
+
+    function togglePauseGuided() {
+      if (!guidedPaused) { guidedPaused = true; guidedStatusText.textContent = "⏸️ Szüneteltetve."; synth.cancel(); }
+      else { guidedPaused = false; runGuidedStep(); }
+    }
+
+    function exitGuidedMode() { guidedActive = false; guidedPanel.classList.add('hidden'); standardControls.classList.remove('hidden'); quickNavContainer.classList.remove('hidden'); updateCard(); }
+    function toggleLoop() { isLooping = !isLooping; loopDot.className = `w-2 h-2 rounded-full ${isLooping ? 'bg-brand-500 pulse-active' : 'bg-slate-300'}`; if (isLooping && !isSpeaking) speakCurrent(); }
+
+    prevBtn.addEventListener('click', () => { if (currentIndex > 0) { currentIndex--; updateCard(); } });
+    nextBtn.addEventListener('click', () => { if (currentIndex < cards.length - 1) { currentIndex++; updateCard(); } });
+    playBtn.addEventListener('click', () => { if (isSpeaking) stopSpeech(); else speakCurrent(); });
+    flashcard.addEventListener('click', () => { if (!guidedActive) { if (isSpeaking) stopSpeech(); else speakCurrent(); } });
+    loopBtn.addEventListener('click', () => toggleLoop());
+    startGuidedBtn.addEventListener('click', () => startGuidedMode(););
+    exitGuidedBtn.addEventListener('click', () => exitGuidedMode(););
+    pauseGuidedBtn.addEventListener('click', () => togglePauseGuided(););
+    nextGuidedCardBtn.addEventListener('click', () => { currentIndex++; nextGuidedCardBtn.classList.add('hidden'); updateCard(); });
+
+    setupQuickNav(); updateCard();
+  </script>
+</body>
+</html>
