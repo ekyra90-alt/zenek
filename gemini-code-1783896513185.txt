@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zene & Karaoke Lejátszó</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 🌐 BEOLVASSUK A KÖZÖS ADATOT -->
+  <script src="adat.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-300">
+
+  <header class="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-6 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="tanulo_kartyak.html" class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-2 rounded-xl font-bold">❮ Vissza a Felolvasóhoz</a>
+        <span class="text-base font-bold tracking-wide">Zenei Karaoke Stúdió</span>
+      </div>
+    </div>
+  </header>
+
+  <audio id="zene" preload="auto"></audio>
+
+  <main class="flex-1 max-w-2xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+    
+    <!-- Szekció Vezérlők -->
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border shadow-sm space-y-4">
+      <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Gyorsugrás Versszakokra</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="verseBtnsContainer"></div>
+      <div class="flex justify-between items-center pt-2 border-t">
+        <button onclick="clearLoop()" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-xs font-bold rounded-lg">Loop törlése</button>
+        <span id="loopBadge" class="hidden text-xs bg-brand-500 text-white px-2 py-1 rounded">Ismétlés aktív</span>
+      </div>
+    </div>
+
+    <!-- Lejátszó sáv -->
+    <div class="bg-white dark:bg-slate-800 p-4 border rounded-2xl shadow-sm flex items-center gap-4">
+      <button id="playPauseBtn" class="p-3 bg-brand-600 text-white rounded-full font-bold text-sm">▶️ Lejátszás</button>
+      <div class="flex-1 flex items-center gap-2">
+        <span id="currentTime" class="text-xs font-mono text-slate-400">0:00</span>
+        <input type="range" id="progressBar" value="0" class="flex-1 h-1.5 bg-slate-200 rounded-lg appearance-none accent-brand-600">
+        <span id="duration" class="text-xs font-mono text-slate-400">0:00</span>
+      </div>
+    </div>
+
+    <!-- Karaoke Doboz -->
+    <div class="bg-white dark:bg-slate-800 rounded-3xl border p-6 space-y-6 max-h-[500px] overflow-y-auto" id="lyricsBox"></div>
+  </main>
+
+  <script>
+    const audio = document.getElementById("zene");
+    const playPauseBtn = document.getElementById("playPauseBtn");
+    const progressBar = document.getElementById("progressBar");
+    const currentTimeText = document.getElementById("currentTime");
+    const durationText = document.getElementById("duration");
+    const lyricsBox = document.getElementById("lyricsBox");
+    const verseBtnsContainer = document.getElementById("verseBtnsContainer");
+    const loopBadge = document.getElementById("loopBadge");
+
+    let loopStart = null; let loopEnd = null; let isMusicPlaying = false;
+
+    // Betöltjük a dalt a közös konfigurációból
+    audio.src = GITHUB_MP3_URL;
+
+    function buildUI() {
+      // Versszak gombok generálása
+      verseBtnsContainer.innerHTML = '';
+      songStructureData.forEach((verse, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "py-2 px-3 text-xs font-bold bg-slate-100 dark:bg-slate-700 rounded-xl hover:bg-brand-100 transition-all text-center";
+        btn.textContent = verse.title;
+        btn.addEventListener('click', () => setLoop(verse.start, verse.end, verse.title));
+        verseBtnsContainer.appendChild(btn);
+      });
+
+      // Karaoke szövegek felépítése
+      lyricsBox.innerHTML = '';
+      songStructureData.forEach((verse, vIdx) => {
+        const vDiv = document.createElement('div'); vDiv.className = "space-y-2 p-2";
+        const vTitle = document.createElement('h4'); vTitle.className = "text-xs font-bold text-slate-400 tracking-wider mb-2";
+        vTitle.textContent = verse.title; vDiv.appendChild(vTitle);
+
+        verse.lines.forEach((line, lIdx) => {
+          const lDiv = document.createElement('div');
+          lDiv.className = "p-2 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition transition-all border border-transparent";
+          lDiv.id = `line-${vIdx}-${lIdx}`;
+          lDiv.addEventListener('click', () => setLoop(line.start, line.end, "Sor"));
+
+          const eng = document.createElement('p'); eng.className = "text-base font-semibold";
+          eng.innerHTML = line.text.replace(/\*\*(.*?)\*\*/g, '<span class="text-brand-600 font-black">$1</span>');
+          const hun = document.createElement('p'); hun.className = "text-xs text-slate-400"; hun.textContent = line.hungarian;
+
+          lDiv.appendChild(eng); lDiv.appendChild(hun); vDiv.appendChild(lDiv);
+        });
+        lyricsBox.appendChild(vDiv);
+      });
+    }
+
+    function setLoop(start, end, label) {
+      loopStart = start; loopEnd = end; audio.currentTime = loopStart;
+      loopBadge.textContent = `Loop: ${label}`; loopBadge.classList.remove('hidden');
+      audio.play(); isMusicPlaying = true; playPauseBtn.textContent = "⏸️ Szünet";
+    }
+
+    function clearLoop() { loopStart = null; loopEnd = null; loopBadge.classList.add('hidden'); }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (isMusicPlaying) { audio.pause(); isMusicPlaying = false; playPauseBtn.textContent = "▶️ Lejátszás"; }
+      else { audio.play(); isMusicPlaying = true; playPauseBtn.textContent = "⏸️ Szünet"; }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      const cur = audio.currentTime; const dur = audio.duration || 100;
+      if (!isNaN(audio.duration)) {
+        progressBar.value = (cur / dur) * 100;
+        currentTimeText.textContent = formatTime(cur); durationText.textContent = formatTime(dur);
+      }
+      
+      // Karaoke szinkron sorkiemelés
+      songStructureData.forEach((verse, vIdx) => {
+        verse.lines.forEach((line, lIdx) => {
+          const el = document.getElementById(`line-${vIdx}-${lIdx}`);
+          if (el) {
+            if (cur >= line.start && cur < line.end) {
+              el.classList.add('bg-brand-50', 'dark:bg-brand-900/30', 'border-brand-300', 'scale-[1.01]');
+              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+              el.classList.remove('bg-brand-50', 'dark:bg-brand-900/30', 'border-brand-300', 'scale-[1.01]');
+            }
+          }
+        });
+      });
+
+      if (loopEnd !== null && cur >= loopEnd) { audio.currentTime = loopStart; }
+    });
+
+    progressBar.addEventListener('input', (e) => { if (!isNaN(audio.duration)) audio.currentTime = (e.target.value / 100) * audio.duration; });
+    function formatTime(s) { const m = Math.floor(s / 60); const sec = Math.floor(s % 60); return `${m}:${sec < 10 ? '0' : ''}${sec}`; }
+
+    buildUI();
+  </script>
+</body>
+</html>
