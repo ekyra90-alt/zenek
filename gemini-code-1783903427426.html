@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenei Hallás Kvíz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="adat.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-300">
+
+  <header class="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-6 sticky top-0 z-10 shadow-sm">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="tanulo_kartyak.html" class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-2 rounded-xl font-bold">❮ Vissza</a>
+        <span class="text-lg font-bold tracking-wide text-slate-800 dark:text-white">Zenei Hallás Kvíz</span>
+      </div>
+      <button id="themeToggle" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">🌓</button>
+    </div>
+  </header>
+
+  <audio id="audioCutter" preload="auto"></audio>
+
+  <main class="flex-1 max-w-2xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center items-center gap-6">
+    
+    <div class="w-full flex justify-between items-center text-sm font-bold text-slate-400">
+      <span id="quizProgress">1 / 12 Feladat</span>
+      <span id="quizScore" class="text-brand-600 dark:text-brand-400">Pontszám: 0</span>
+    </div>
+
+    <div id="mainContentBox" class="w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700/60 p-8 md:p-10 flex flex-col items-center gap-6 min-h-[300px]">
+      
+      <div class="text-center space-y-3 w-full flex flex-col items-center">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Kattints a lejátszáshoz és fülelj:</p>
+        
+        <button id="listenBtn" onclick="playAudioSample()" class="w-20 h-20 rounded-full bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center text-2xl shadow-lg shadow-brand-500/30 transition transform hover:scale-105 active:scale-95 relative">
+          <span id="pulseRing" class="absolute inset-0 rounded-full bg-brand-500/40 hidden animate-ping"></span>
+          <span id="listenIcon">▶️</span>
+        </button>
+        
+        <p id="sentenceDisplay" class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white pt-4 tracking-tight"></p>
+      </div>
+
+      <div class="w-full border-t border-slate-100 dark:border-slate-700/60 my-1"></div>
+
+      <div id="optionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"></div>
+
+      <button id="nextBtn" onclick="nextQuestion()" class="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition-all hidden items-center justify-center">
+        Következő feladat ➔
+      </button>
+    </div>
+
+    <div id="resultBox" class="w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border p-8 text-center hidden flex-col items-center gap-4">
+      <span class="text-5xl">🎵</span>
+      <h2 class="text-2xl font-black">Teszt lezárva!</h2>
+      <p id="finalScoreText" class="text-lg font-medium text-slate-600 dark:text-slate-300"></p>
+      <button onclick="location.reload()" class="mt-4 px-6 py-3 bg-brand-600 text-white font-bold rounded-xl transition">
+        Újrapróbálkozás 🔄
+      </button>
+    </div>
+
+  </main>
+
+  <script>
+    const audio = document.getElementById("audioCutter");
+    
+    // Stabil hangforrás beállítása a helyi fájlra
+    audio.src = "Hipochondria.mp3";
+    audio.onerror = function() { if (typeof GITHUB_MP3_URL !== 'undefined') audio.src = GITHUB_MP3_URL; };
+
+    let quizSequence = [];
+    let currentIdx = 0;
+    let score = 0;
+    let hasAnswered = false;
+    let sampleEndTime = 0;
+
+    const sentenceDisplay = document.getElementById('sentenceDisplay');
+    const optionsGrid = document.getElementById('optionsGrid');
+    const nextBtn = document.getElementById('nextBtn');
+    const quizProgress = document.getElementById('quizProgress');
+    const quizScore = document.getElementById('quizScore');
+    const mainContentBox = document.getElementById('mainContentBox');
+    const resultBox = document.getElementById('resultBox');
+    const finalScoreText = document.getElementById('finalScoreText');
+    const listenIcon = document.getElementById('listenIcon');
+    const pulseRing = document.getElementById('pulseRing');
+
+    // Sötét mód
+    const themeToggle = document.getElementById('themeToggle');
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('color-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function initQuiz() {
+      // Átveszi a cards adatait az adat.js-ből
+      quizSequence = shuffle([...cards]);
+      currentIdx = 0;
+      score = 0;
+      quizScore.textContent = `Pontszám: ${score}`;
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      hasAnswered = false;
+      nextBtn.style.display = 'none';
+      optionsGrid.innerHTML = '';
+      setListenIcon(false);
+
+      const currentCard = quizSequence[currentIdx];
+      quizProgress.textContent = `${currentIdx + 1} / ${quizSequence.length} Feladat`;
+      
+      // Kitakarjuk a kulcsszót a képernyőn
+      sentenceDisplay.textContent = currentCard.english.replace(/\*\*(.*?)\*\*/g, "_______");
+
+      // Időbélyegek elmentése a vágáshoz
+      audio.currentTime = currentCard.startTime;
+      sampleEndTime = currentCard.endTime;
+
+      // Opciók (Jó + 3 rossz)
+      let options = [currentCard.keyword];
+      const wrongPool = cards.filter(c => c.keyword !== currentCard.keyword).map(c => c.keyword);
+      const shuffledWrong = shuffle(wrongPool);
+      options.push(shuffledWrong[0], shuffledWrong[1], shuffledWrong[2]);
+      options = shuffle(options);
+
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.className = "py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 font-bold text-sm transition-all text-center shadow-sm active:scale-95";
+        btn.addEventListener('click', () => checkAnswer(btn, opt, currentCard));
+        optionsGrid.appendChild(btn);
+      });
+
+      // Automatikusan lejátsszuk a zenei mintát indításkor
+      setTimeout(() => { playAudioSample(); }, 400);
+    }
+
+    function playAudioSample() {
+      const currentCard = quizSequence[currentIdx];
+      audio.currentTime = currentCard.startTime;
+      setListenIcon(true);
+      audio.play().catch(e => console.log(e));
+    }
+
+    // A kulcsfontosságú vágó mechanizmus: ha eléri a mondat végét, megállítjuk!
+    audio.addEventListener('timeupdate', () => {
+      if (audio.currentTime >= sampleEndTime && !audio.paused) {
+        audio.pause();
+        setListenIcon(false);
+      }
+    });
+
+    function setListenIcon(isPlaying) {
+      if (isPlaying) {
+        listenIcon.textContent = "🔊";
+        pulseRing.classList.remove('hidden');
+      } else {
+        listenIcon.textContent = "▶️";
+        pulseRing.classList.add('hidden');
+      }
+    }
+
+    function checkAnswer(selectedBtn, chosenOpt, currentCard) {
+      if (hasAnswered) return;
+      hasAnswered = true;
+      audio.pause();
+      setListenIcon(false);
+
+      const correctOpt = currentCard.keyword;
+      const buttons = optionsGrid.querySelectorAll('button');
+      
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === correctOpt) {
+          btn.className = "py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-black text-sm text-center";
+        }
+      });
+
+      if (chosenOpt === correctOpt) {
+        score += 10;
+        quizScore.textContent = `Pontszám: ${score}`;
+        selectedBtn.className = "py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-black text-sm text-center scale-105 shadow-md";
+      } else {
+        selectedBtn.className = "py-3 px-4 rounded-xl border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 font-black text-sm text-center scale-105 shadow-md";
+      }
+
+      // Felfedjük a mondatot írásban is
+      sentenceDisplay.textContent = currentCard.english.replace(/\*\*/g, '');
+      nextBtn.style.display = 'flex';
+    }
+
+    function nextQuestion() {
+      if (currentIdx < quizSequence.length - 1) {
+        currentIdx++;
+        loadQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    function showResults() {
+      mainContentBox.classList.add('hidden');
+      resultBox.classList.remove('hidden');
+      resultBox.classList.add('flex');
+      
+      const maxScore = quizSequence.length * 10;
+      let msg = "";
+      if (score === maxScore) msg = "Tökéletes zenei hallás! Minden szót kihallottál! 🌟";
+      else if (score >= maxScore * 0.7) msg = "Nagyon jó a füled a ritmusra és a szövegre! ⚡";
+      else msg = "Gyakorold még kicsit a zenelejátszó módot! 🎤";
+
+      finalScoreText.innerHTML = `Elért eredményed: <strong class="text-brand-600 text-2xl">${score} / ${maxScore} pont</strong><br><span class="text-sm text-slate-400 mt-2 block">${msg}</span>`;
+    }
+
+    initQuiz();
+  </script>
+</body>
+</html>
