@@ -1,0 +1,113 @@
+```html
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karaoke - Angol Tanulás</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .active-line { color: #f59e0b; font-weight: bold; transform: scale(1.05); }
+        .highlight { color: #ec4899; cursor: pointer; text-decoration: underline; font-weight: bold; }
+        .lyric-line { padding: 0.5rem; transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 flex flex-col items-center">
+
+    <div class="max-w-lg w-full bg-gray-800 p-6 rounded-2xl shadow-xl">
+        <h1 class="text-2xl font-bold mb-6 text-center">🎤 Karaoke & Szókincs</h1>
+        <audio id="audioPlayer" controls class="w-full mb-6"></audio>
+        <div id="lyricsContainer" class="h-96 overflow-y-auto space-y-4 text-lg"></div>
+    </div>
+
+    <script>
+        // Az időzített szöveg adatok
+        const rawLyrics = `
+[00:28.60]I check my body every hour.
+[00:32.40]I feel I lose my physical power.
+[00:36.00]I find a new problem every day,
+[00:39.30]The happy thoughts all go away.
+[00:43.00]I am terribly **unwell** tonight,
+[00:46.00]My face is completely white.
+[00:49.90]I **suffer from** a secret thing,
+[00:53.80]The church bells start to ring.
+[01:03.20]I think I have a **heart attack**.
+[01:06.60]I need to lie down on my back.
+[01:09.90]My lifestyle is very **unhealthy**.
+[01:13.40]Only the doctors are getting wealthy.
+[01:17.40]This scary **cancer** is inside.
+[01:20.00]The doctor's office is very wide.
+[01:24.00]I always catch a dangerous **flu**.
+[01:27.30]I do not know what to do.
+[01:30.90]I am terribly **unwell** tonight,
+[01:34.70]My face is completely white.
+[01:37.90]I **suffer from** a secret thing,
+[01:41.80]The church bells start to ring.
+[02:01.00]My right leg is **disabled** now.
+[02:05.20]I am groaning like a cow.
+[02:08.30]Every movement is very **painful**.
+[02:11.90]My little dog is very faithful.
+[02:16.00]I will be **sick** very soon.
+[02:19.00]I see two shadows under the moon.
+[02:23.00]My **throat** is very **sore** today.
+[02:26.10]The warm summer went away.
+[02:29.60]I am terribly unwell tonight,
+[02:33.30]My face is completely white.
+[02:36.80]I suffer from a secret thing,
+[02:39.80]The church bells start to ring.
+[03:14.70]I am getting completely **deaf**.
+[03:17.00]I cannot hear the famous chef.
+[03:20.00]My eyes are turning **blind**.
+[03:24.50]No good doctor can I find.
+        `;
+
+        function parseTime(timeStr) {
+            const parts = timeStr.split(':');
+            return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+        }
+
+        function init() {
+            const lines = rawLyrics.trim().split('\n');
+            const container = document.getElementById('lyricsContainer');
+            
+            window.lyricsData = lines.map((line, i) => {
+                const match = line.match(/\[(\d+:\d+\.\d+)\](.*)/);
+                if (!match) return null;
+                
+                // Szöveg feldolgozása: kiemelt részek (**) átalakítása <span>-é
+                let text = match[2].replace(/\*\*(.*?)\*\*/g, '<span class="highlight" onclick="speakWord(\'$1\')">$1</span>');
+                
+                const div = document.createElement('div');
+                div.id = `line-${i}`;
+                div.className = 'lyric-line';
+                div.innerHTML = text;
+                container.appendChild(div);
+                
+                return { time: parseTime(match[1]), element: div };
+            }).filter(l => l !== null);
+        }
+
+        // Hangszintetizátor funkció
+        function speakWord(word) {
+            const msg = new SpeechSynthesisUtterance(word);
+            msg.lang = 'en-US';
+            window.speechSynthesis.speak(msg);
+        }
+
+        document.getElementById('audioPlayer').ontimeupdate = (e) => {
+            const currentTime = e.target.currentTime;
+            window.lyricsData.forEach((l, i) => {
+                if (currentTime >= l.time) {
+                    document.querySelectorAll('.active-line').forEach(n => n.classList.remove('active-line'));
+                    l.element.classList.add('active-line');
+                    l.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        };
+
+        init();
+    </script>
+</body>
+</html>
+
+```
