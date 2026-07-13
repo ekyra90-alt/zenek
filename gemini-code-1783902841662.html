@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="hu" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zenei Dalszöveg Kihívás</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="adat.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-300">
+
+  <header class="border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 py-4 px-6 sticky top-0 z-10 shadow-sm">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="tanulo_kartyak.html" class="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-2 rounded-xl font-bold">❮ Vissza</a>
+        <span class="text-lg font-bold tracking-wide text-slate-800 dark:text-white">Zenei Szövegkihívás</span>
+      </div>
+      <button id="themeToggle" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">🌓</button>
+    </div>
+  </header>
+
+  <audio id="zeneiAudio" preload="auto"></audio>
+
+  <main class="flex-1 max-w-2xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center items-center gap-6">
+    
+    <div class="w-full flex justify-between items-center text-sm font-bold text-slate-400">
+      <span id="gameProgress">Felkészülés...</span>
+      <span id="gameScore" class="text-brand-600 dark:text-brand-400">Pontszám: 0</span>
+    </div>
+
+    <div id="startScreen" class="w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border p-8 text-center flex flex-col items-center gap-4">
+      <span class="text-5xl animate-bounce">🎵</span>
+      <h2 class="text-xl font-black">Készen állsz a zenei tesztre?</h2>
+      <p class="text-sm text-slate-400 max-w-sm">A program elindítja a Hipochondria dalt. Amikor a zene hirtelen elhallgat, gyorsan bökj rá a következő elénekelendő kulcsszóra!</p>
+      <button onclick="startGame()" class="mt-2 px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-500/20 transition transform active:scale-95">
+        Zene indítása és Játék! ▶️
+      </button>
+    </div>
+
+    <div id="gameBox" class="w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border p-8 md:p-10 flex hidden flex-col gap-6 min-h-[280px]">
+      
+      <div class="text-center space-y-2">
+        <div id="statusBadge" class="inline-block text-[10px] uppercase font-black tracking-widest bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300 px-2.5 py-1 rounded-md animate-pulse">
+          Hallgasd a zenét... 🎧
+        </div>
+        <p id="lyricsLine" class="text-xl md:text-2xl font-bold tracking-tight text-slate-950 dark:text-white pt-2"></p>
+      </div>
+
+      <div id="timerContainer" class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 overflow-hidden invisible">
+        <div id="timerBar" class="bg-amber-500 h-full w-full transition-all duration-100 ease-linear"></div>
+      </div>
+
+      <div id="optionsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full opacity-40 pointer-events-none transition-all"></div>
+    </div>
+
+    <div id="endScreen" class="w-full bg-white dark:bg-slate-800 rounded-3xl shadow-xl border p-8 text-center hidden flex-col items-center gap-4">
+      <span class="text-5xl">🎤</span>
+      <h2 class="text-2xl font-black">Rocksztár teljesítmény!</h2>
+      <p id="finalScoreText" class="text-lg font-medium text-slate-600 dark:text-slate-300"></p>
+      <button onclick="location.reload()" class="mt-4 px-6 py-3 bg-brand-600 text-white font-bold rounded-xl transition">
+        Új játék indítása 🔄
+      </button>
+    </div>
+
+  </main>
+
+  <script>
+    const audio = document.getElementById("zeneiAudio");
+    let gameTasks = [];
+    
+    // 🛠️ FIX HANGFORRÁS: Ugyanaz a közvetlen elérés, ami a lejátszónál már bevált
+    audio.src = "Hipochondria.mp3";
+    audio.onerror = function() {
+      if (typeof GITHUB_MP3_URL !== 'undefined') audio.src = GITHUB_MP3_URL;
+    };
+
+    let currentTaskIndex = 0;
+    let score = 0;
+    let isWaitingForAnswer = false;
+    let timerInterval = null;
+    let maxTime = 6000; 
+    let timeLeft = 0;
+
+    const startScreen = document.getElementById('startScreen');
+    const gameBox = document.getElementById('gameBox');
+    const endScreen = document.getElementById('endScreen');
+    const lyricsLine = document.getElementById('lyricsLine');
+    const statusBadge = document.getElementById('statusBadge');
+    const optionsGrid = document.getElementById('optionsGrid');
+    const timerContainer = document.getElementById('timerContainer');
+    const timerBar = document.getElementById('timerBar');
+    const gameProgress = document.getElementById('gameProgress');
+    const gameScore = document.getElementById('gameScore');
+    const finalScoreText = document.getElementById('finalScoreText');
+
+    // Sötét mód
+    const themeToggle = document.getElementById('themeToggle');
+    if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('color-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function prepareTasks() {
+      gameTasks = [];
+      if (typeof songStructureData !== 'undefined') {
+        songStructureData.forEach(verse => {
+          verse.lines.forEach(line => {
+            if (line.text.includes('**')) { 
+              const match = line.text.match(/\*\*(.*?)\*\*/);
+              if (match) {
+                gameTasks.push({
+                  fullText: line.text,
+                  blankText: line.text.replace(/\*\*(.*?)\*\*/, "_______"),
+                  keyword: match[1],
+                  stopTime: line.end - 1.2, 
+                  startTime: line.start
+                });
+              }
+            }
+          });
+        });
+      }
+      gameTasks = shuffle(gameTasks);
+    }
+
+    function startGame() {
+      prepareTasks();
+      if (gameTasks.length === 0) {
+        alert("Hiba: Nem sikerült betölteni a dalszöveg adatokat az adat.js-ből!");
+        return;
+      }
+      
+      startScreen.classList.add('hidden');
+      gameBox.classList.remove('hidden');
+      
+      currentTaskIndex = 0;
+      score = 0;
+      gameScore.textContent = `Pontszám: ${score}`;
+      
+      loadTask();
+    }
+
+    function loadTask() {
+      isWaitingForAnswer = false;
+      timerContainer.className = "w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 overflow-hidden invisible";
+      statusBadge.textContent = "Hallgasd a zenét... 🎧";
+      statusBadge.className = "inline-block text-[10px] uppercase font-black tracking-widest bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300 px-2.5 py-1 rounded-md animate-pulse";
+      
+      optionsGrid.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 w-full opacity-40 pointer-events-none transition-all";
+      optionsGrid.innerHTML = '';
+
+      const task = gameTasks[currentTaskIndex];
+      gameProgress.textContent = `${currentTaskIndex + 1} / ${gameTasks.length} Dalrészlet`;
+      lyricsLine.textContent = task.fullText.replace(/\*\*/g, '');
+
+      audio.currentTime = task.startTime;
+      audio.play().catch(e => console.log("Lejátszási hiba:", e));
+    }
+
+    audio.addEventListener('timeupdate', () => {
+      if (gameTasks.length === 0 || isWaitingForAnswer) return;
+      
+      const task = gameTasks[currentTaskIndex];
+      if (audio.currentTime >= task.stopTime) {
+        triggerChallenge(task);
+      }
+    });
+
+    function triggerChallenge(task) {
+      isWaitingForAnswer = true;
+      audio.pause(); 
+
+      statusBadge.textContent = "Hirtelen STOP! Mi a következő szó? ⏱️";
+      statusBadge.className = "inline-block text-[10px] uppercase font-black tracking-widest bg-amber-500 text-white px-2.5 py-1 rounded-md animate-bounce";
+      lyricsLine.textContent = task.blankText;
+
+      // 🛠️ JAVÍTÁS: A helyes cards tömbre hivatkozunk cardsData helyett
+      let options = [task.keyword];
+      const wrongPool = cards.filter(c => c.keyword !== task.keyword).map(c => c.keyword);
+      const shuffledWrong = shuffle(wrongPool);
+      options.push(shuffledWrong[0], shuffledWrong[1], shuffledWrong[2]);
+      options = shuffle(options);
+
+      optionsGrid.innerHTML = '';
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.className = "py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-900/30 font-bold text-sm transition-all text-center shadow-sm active:scale-95";
+        btn.addEventListener('click', () => handleAnswer(btn, opt, task.keyword));
+        optionsGrid.appendChild(btn);
+      });
+
+      optionsGrid.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 w-full opacity-100 transition-all";
+      
+      timerContainer.className = "w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 overflow-hidden visible";
+      timeLeft = maxTime;
+      startCountdown();
+    }
+
+    function startCountdown() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerBar.style.width = "100%";
+      
+      timerInterval = setInterval(() => {
+        timeLeft -= 100;
+        timerBar.style.width = `${(timeLeft / maxTime) * 100}%`;
+        
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleAnswer(null, "", gameTasks[currentTaskIndex].keyword);
+        }
+      }, 100);
+    }
+
+    function handleAnswer(selectedBtn, chosenOpt, correctOpt) {
+      if (timerInterval) clearInterval(timerInterval);
+      timerContainer.className = "w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2 overflow-hidden invisible";
+
+      const buttons = optionsGrid.querySelectorAll('button');
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.textContent === correctOpt) {
+          btn.className = "py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-black text-sm text-center";
+        }
+      });
+
+      const isCorrect = chosenOpt === correctOpt;
+      if (isCorrect) {
+        score += 10;
+        gameScore.textContent = `Pontszám: ${score}`;
+        if (selectedBtn) selectedBtn.className = "py-3 px-4 rounded-xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-black text-sm text-center scale-105 shadow-md";
+      } else {
+        if (selectedBtn) selectedBtn.className = "py-3 px-4 rounded-xl border-2 border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 font-black text-sm text-center scale-105 shadow-md";
+      }
+
+      lyricsLine.textContent = gameTasks[currentTaskIndex].fullText.replace(/\*\*/g, '');
+
+      setTimeout(() => {
+        if (currentTaskIndex < gameTasks.length - 1) {
+          currentTaskIndex++;
+          loadTask();
+        } else {
+          showFinalResults();
+        }
+      }, 2500);
+    }
+
+    function showFinalResults() {
+      audio.pause();
+      gameBox.classList.add('hidden');
+      endScreen.classList.remove('hidden');
+      endScreen.classList.add('flex');
+      
+      const maxPossibleScore = gameTasks.length * 10;
+      let review = "";
+      if (score === maxPossibleScore) review = "Hibátlan ritmusérzék és tökéletes szövegtudás! 🌟";
+      else if (score >= maxPossibleScore * 0.7) review = "Ez nagyon komoly, majdnem minden megszólalás ült! ⚡";
+      else review = "Nem rossz, de érdemes még pörgetni a Karaoke lejátszót! 🎤";
+
+      finalScoreText.innerHTML = `Végső pontszámod: <strong class="text-brand-600 dark:text-brand-400 text-2xl">${score} / ${maxPossibleScore} pont</strong><br><span class="text-sm text-slate-400 mt-2 block">${review}</span>`;
+    }
+  </script>
+</body>
+</html>
