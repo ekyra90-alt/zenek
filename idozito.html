@@ -1,0 +1,140 @@
+```html
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Karaoke Időzítő</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .karaoke-mode { display: none; }
+        .is-karaoke .karaoke-mode { display: flex; position: fixed; inset: 0; background: #f8fafc; z-index: 50; flex-direction: column; }
+        .is-karaoke .editor-mode { display: none; }
+        .sticky-top { position: sticky; top: 0; background: white; z-index: 10; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+        .lyric-card { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; margin: 0.5rem; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .active-line { border: 2px solid #3b82f6; background: #eff6ff; transform: scale(1.02); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<div id="appContainer">
+    <div id="editor" class="editor-mode p-4 max-w-2xl mx-auto">
+        <div class="sticky-top">
+            <h1 class="text-xl font-bold mb-2 text-slate-800">Szerkesztő</h1>
+            <input type="file" id="audioInput" class="w-full mb-2">
+            <audio id="audioMain" controls class="w-full mb-2"></audio>
+            <div class="flex gap-2">
+                <button onclick="seek(audioMain, -5)" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold">-5s</button>
+                <button onclick="seek(audioMain, 5)" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold">+5s</button>
+            </div>
+        </div>
+        <textarea id="lyricInput" class="w-full h-32 border p-2 mb-4 rounded-lg" placeholder="Dalszöveg soronként..."></textarea>
+        <div class="grid grid-cols-1 gap-2 mb-4">
+            <button onclick="initLyrics()" class="bg-slate-800 text-white py-2 rounded-lg">Betöltés</button>
+            <button onclick="toggleKaraoke(true)" class="bg-blue-600 text-white py-2 rounded-lg">KARAOKE MÓD</button>
+            <button onclick="exportLRC()" class="bg-purple-600 text-white py-2 rounded-lg font-bold">LRC Exportálás</button>
+        </div>
+        <div id="lyricList" class="mt-4 space-y-2"></div>
+    </div>
+
+    <div id="karaoke" class="karaoke-mode">
+        <div class="p-4 bg-white border-b shadow-sm">
+            <div class="flex gap-2 mb-2">
+                <button onclick="toggleKaraoke(false)" class="bg-slate-800 text-white px-4 py-2 rounded-lg">Kilépés</button>
+                <button onclick="seek(audioKaraoke, -5)" class="bg-slate-200 px-4 py-2 rounded-lg font-bold">-5s</button>
+                <button onclick="seek(audioKaraoke, 5)" class="bg-slate-200 px-4 py-2 rounded-lg font-bold">+5s</button>
+            </div>
+            <audio id="audioKaraoke" controls class="w-full"></audio>
+        </div>
+        <div id="lyricsDisplay" class="flex-grow overflow-y-auto p-4 space-y-2"></div>
+    </div>
+</div>
+
+<div id="exportModal" class="hidden fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+    <div class="bg-white p-6 rounded-xl w-full max-w-lg">
+        <h2 class="text-lg font-bold mb-2">LRC Szöveg:</h2>
+        <textarea id="exportArea" class="w-full h-64 p-2 border rounded font-mono text-sm"></textarea>
+        <button onclick="document.getElementById('exportModal').classList.add('hidden')" class="mt-4 w-full bg-slate-800 text-white py-2 rounded">Bezárás</button>
+    </div>
+</div>
+
+<script>
+    const audioMain = document.getElementById('audioMain');
+    const audioKaraoke = document.getElementById('audioKaraoke');
+    const container = document.getElementById('appContainer');
+    let lyrics = [];
+
+    document.getElementById('audioInput').onchange = (e) => {
+        const url = URL.createObjectURL(e.target.files[0]);
+        audioMain.src = audioKaraoke.src = url;
+    };
+
+    function seek(player, delta) { player.currentTime = Math.max(0, player.currentTime + delta); }
+
+    function initLyrics() {
+        lyrics = document.getElementById('lyricInput').value.split('\n').filter(l=>l.trim()).map(l=>({text: l, time: 0}));
+        render();
+    }
+
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = (s % 60).toFixed(2);
+        return `[${String(m).padStart(2, '0')}:${String(sec).padStart(5, '0')}]`;
+    }
+
+    function exportLRC() {
+        const lrcText = lyrics.map(l => `${formatTime(l.time)}${l.text}`).join('\n');
+        document.getElementById('exportArea').value = lrcText;
+        document.getElementById('exportModal').classList.remove('hidden');
+    }
+
+    function updateTime(i, val) { lyrics[i].time = parseFloat(val); render(); }
+
+    function render() {
+        document.getElementById('lyricList').innerHTML = lyrics.map((l, i) => `
+            <div class="flex gap-2 items-center bg-white p-2 rounded border">
+                <input type="number" value="${l.time}" class="w-20 border p-1 rounded" onchange="updateTime(${i}, this.value)">
+                <span class="flex-grow truncate">${l.text}</span>
+                <button onclick="lyrics[${i}].time=audioMain.currentTime.toFixed(1); render();" class="bg-yellow-500 px-3 py-1 rounded text-white text-sm">MOST</button>
+            </div>
+        `).join('');
+        
+        if(container.classList.contains('is-karaoke')) {
+            document.getElementById('lyricsDisplay').innerHTML = lyrics.map((l, i) => `
+                <div id="line-${i}" class="lyric-card">
+                    <input type="number" value="${l.time}" class="w-16 bg-transparent font-bold text-blue-600" onchange="updateTime(${i}, this.value)">
+                    <span class="flex-grow text-slate-700">${l.text}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    function toggleKaraoke(show) {
+        if (show) {
+            container.classList.add('is-karaoke');
+            audioKaraoke.currentTime = audioMain.currentTime;
+            render();
+            audioKaraoke.play();
+        } else {
+            container.classList.remove('is-karaoke');
+            audioMain.currentTime = audioKaraoke.currentTime;
+            audioKaraoke.pause();
+        }
+    }
+
+    [audioMain, audioKaraoke].forEach(a => a.ontimeupdate = () => {
+        lyrics.forEach((l, i) => {
+            const el = document.getElementById(`line-${i}`);
+            if (el && (audioMain.currentTime >= l.time || audioKaraoke.currentTime >= l.time)) {
+                document.querySelectorAll('.active-line').forEach(n => n.classList.remove('active-line'));
+                el.classList.add('active-line');
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    });
+</script>
+</body>
+</html>
+
+
+```
