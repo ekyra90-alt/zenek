@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanulási Irányítópult</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+    <script src="adat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 pb-10">
+
+    <div class="bg-indigo-600 p-8 rounded-b-[2rem] text-white shadow-md">
+        <div class="max-w-md mx-auto">
+            <h1 class="text-2xl font-extrabold mb-1">Tanulási Útvonal</h1>
+            <p class="text-indigo-100 opacity-90">Haladj lépésről lépésre a mesteri tudásig.</p>
+        </div>
+    </div>
+
+    <main class="max-w-md mx-auto px-6 mt-8">
+        <div id="module-list" class="space-y-4"></div>
+    </main>
+
+    <script>
+        const steps = [
+            { title: "Dalfeldolgozás", desc: "Hangolódj rá a dalra, ismerd meg a szövegét és sajátítsd el a kiejtést.", color: "rose" },
+            { title: "Mélytanulás kártyák", desc: "Rögzítsd a kulcsszavakat célzott, ismétlésre épülő kártyákkal.", color: "indigo" },
+            { title: "Aktív éneklés", desc: "Gyakorold az éneklést az eredeti ritmus és tempó alapján.", color: "amber" },
+            { title: "Tudásellenőrző Teszt", desc: "Ellenőrizd tudásod: válaszd ki a hiányzó kulcsszavakat.", color: "emerald" },
+            { title: "Beszédkészség teszt", desc: "Mondd ki hangosan az angol mondatokat és fejleszd az önbizalmad.", color: "sky" },
+            { title: "MI-alapú mondatalkotás", desc: "Alkosd meg saját mondataidat, az MI pedig kijavítja a hibáidat.", color: "violet" },
+            { title: "Rendszeres ismétlés", desc: "Szilárdítsd meg a tanultakat a dal rendszeres hallgatásával.", color: "pink" }
+        ];
+
+        const container = document.getElementById('module-list');
+
+        function renderSteps() {
+            steps.forEach((s, index) => {
+                container.innerHTML += `
+                    <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 hover:border-indigo-200 transition-all cursor-pointer">
+                        <div class="w-16 h-16 bg-${s.color}-50 rounded-2xl flex items-center justify-center text-${s.color}-500 font-bold text-xl">${index + 1}</div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-slate-800">${s.title}</h3>
+                            <p class="text-xs text-slate-400">${s.desc}</p>
+                        </div>
+                        <div class="text-slate-300">❯</div>
+                    </div>
+                `;
+            });
+        }
+
+        renderSteps();
+    </script>
+</body>
+</html>
